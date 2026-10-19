@@ -1,0 +1,20 @@
+# 실제 자료·제출 산출물은 공개 저장소에 넣지 않는다.
+*ABP_CONTEST*
+*.csv
+data/
+outputs/
+**/outputs/
+expected.json
+ext_reference*.json
+assignment.json
+assignment.csv
+exception_ledger.json
+최종제출/
+*.zip
+build/
+.cache/
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+._*
