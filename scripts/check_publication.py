@@ -53,7 +53,7 @@ def main():
         text = path.read_text()
         parsed = HTML(); parsed.feed(text)
         assert len(set(parsed.ids)) == len(parsed.ids), (path, "duplicate ID")
-        assert "__DATA__" not in text and "__CSS__" not in text
+        assert not any(marker in text for marker in ("__DATA__", "__CSS__", "__APP__", "__STUDIES__"))
         for link in parsed.links + parsed.images:
             url = urlparse(link)
             if url.scheme or link == "/":
@@ -98,7 +98,7 @@ def main():
     forbidden = ("대전광역시", "영암군", "남원시", "35.08", "22.53", "0.948", "1.156", "7.05", "242,574")
     for folder in ("analysis", "web", "documents", "site"):
         for path in (ROOT / folder).rglob("*"):
-            if path.suffix in (".py", ".html", ".css", ".md", ".json"):
+            if path.suffix in (".py", ".js", ".html", ".css", ".md", ".json"):
                 text = path.read_text()
             elif path.suffix == ".pdf":
                 doc = fitz.open(path); text = "\n".join(p.get_text() for p in doc)

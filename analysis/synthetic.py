@@ -1,6 +1,7 @@
 """가상 지명과 수치를 직접 작성한 UI 시연용 입력. 실제 자료의 변형본이 아니다."""
 
-from analysis.metrics import evaluate, location_quotient, conditional_lq
+from analysis.metrics import evaluate, location_quotient, conditional_lq, standardized_share
+from analysis.diagnostics import correlation, leave_one_out
 
 
 def records():
@@ -34,6 +35,27 @@ def worked_example():
             "clq": conditional_lq(220, 1000, 400, 2500, 10000, 1000)}
 
 
+def studies():
+    """문서·화면이 공유하는 독립 합성 설명 예제. 실제 자료와 대응하지 않는다."""
+    anchor = [.95, 1.05, .90, 1.10, .98, 1.08]
+    meal = [.92, 1.04, .98, 1.12, 1.05, 1.02]
+    snack = [1.08, .96, 1.12, .92, 1.03, .95]
+    return {
+        "denominator": worked_example(),
+        "monthly": {"anchor": anchor, "meal": meal, "snack": snack,
+                    "meal_r": correlation(anchor, meal), "snack_r": correlation(anchor, snack),
+                    "meal_loo": leave_one_out(anchor, meal), "snack_loo": leave_one_out(anchor, snack)},
+        "similarity": {"meal": .82, "snack": .91},
+        "life": {"a_shares": [.2, .6], "a_weights": [.2, .8],
+                 "b_shares": [.1, .3], "b_weights": [.6, .4],
+                 "before_a": standardized_share([.2, .6], [.2, .8]),
+                 "before_b": standardized_share([.1, .3], [.6, .4]),
+                 "after_a": standardized_share([.2, .6], [.6, .4]),
+                 "after_b": standardized_share([.1, .3], [.6, .4])},
+        "population_example": {"all": .80, "known": 1.05, "segment": 1.20},
+    }
+
+
 if __name__ == "__main__":
     import json
-    print(json.dumps({"data_type": "synthetic", "example": worked_example(), "records": records()}, ensure_ascii=False, indent=2))
+    print(json.dumps({"data_type": "synthetic", "studies": studies(), "records": records()}, ensure_ascii=False, indent=2))
