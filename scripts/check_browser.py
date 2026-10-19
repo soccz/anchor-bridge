@@ -89,16 +89,24 @@ def main():
                 checks.append(name)
                 print("PASS", name, flush=True)
 
-            def navigate(url, selector):
-                print("OPEN", url, flush=True)
-                call("Page.navigate", {"url": url})
+            def wait_for_page(url, selector):
                 deadline = time.monotonic() + 15
                 while time.monotonic() < deadline:
-                    if js(f"document.readyState==='complete' && !!document.querySelector({json.dumps(selector)})"):
+                    if js(f"location.href==={json.dumps(url)} && document.readyState==='complete' && !!document.querySelector({json.dumps(selector)})"):
                         js("document.fonts.ready.then(()=>true)")
                         return
                     time.sleep(.1)
                 raise AssertionError("Load failed: " + url)
+
+            def navigate(url, selector):
+                print("OPEN", url, flush=True)
+                call("Page.navigate", {"url": url})
+                wait_for_page(url, selector)
+
+            def follow(selector, ready_selector):
+                url = js(f"document.querySelector({json.dumps(selector)}).href")
+                js(f"document.querySelector({json.dumps(selector)}).click()")
+                wait_for_page(url, ready_selector)
 
             def viewport(width, height=1000):
                 call("Emulation.setDeviceMetricsOverride", {"width": width, "height": height, "deviceScaleFactor": 1, "mobile": False})
@@ -192,6 +200,39 @@ def main():
             js("document.body.classList.remove('print-review');document.querySelector('#close-review').click()")
             navigate(file_base+'/demo/index.html?case=age','.case-tab')
             check("deep link selects age case", "document.querySelector('[data-case=\"age\"]').getAttribute('aria-pressed')==='true'")
+            # Follow the real landing link through evidence, notes, and a review.
+            viewport(390, 844)
+            for candidate, partner, verdict in (("snack", "스넥", "제외"), ("meal", "일반한식", "검토 후보")):
+                navigate(file_base + '/index.html', '#hero-continue')
+                check("unselected landing keeps discovery entry " + candidate, "!document.querySelector('[data-demo-entry]').href.includes('candidate=')")
+                js(f"document.querySelector('[data-choice=\"{candidate}\"]').click()")
+                check("landing entries carry choice " + candidate, f"[...document.querySelectorAll('[data-demo-entry],#hero-continue')].every(a=>new URL(a.href).searchParams.get('candidate')==='gaon-{candidate}')")
+                follow('#hero-continue', '.chosen-summary')
+                check("landing choice continues at evidence " + candidate, f"document.querySelector('[data-step=\"1\"]').getAttribute('aria-current')==='step' && document.querySelector('.chosen-label strong').textContent==='{partner}' && document.querySelector('.chosen-summary .pill').textContent.includes('{verdict}')")
+                check("continued choice visible and focused " + candidate, "document.activeElement.id==='story' && document.querySelector('.chosen-summary').getBoundingClientRect().top>=0 && document.querySelector('.chosen-summary').getBoundingClientRect().bottom<=innerHeight")
+                shot(output / f'continued-{candidate}-mobile.png')
+                js("document.querySelector('[data-next]').click();document.querySelector('[data-check=\"0\"]').click();document.querySelector('#field-note').value='소개에서 고른 후보의 현장 확인';document.querySelector('#field-note').dispatchEvent(new Event('input'));document.querySelector('#story-review').click()")
+                check("continued choice reaches matching review " + candidate, f"document.querySelector('#review-body').textContent.includes('gaon-{candidate}') && document.querySelector('#review-body').textContent.includes('☑') && document.querySelector('.review-memo').textContent.includes('소개에서 고른 후보')")
+                js("document.querySelector('#close-review').click();document.querySelector('[data-back]').click();document.querySelector('[data-reselect]').click()")
+                check("reselect retains previous choice " + candidate, f"document.querySelector('[data-pick=\"gaon-{candidate}\"]').getAttribute('aria-pressed')==='true'")
+                other='meal' if candidate=='snack' else 'snack'
+                js(f"document.querySelector('[data-pick=\"gaon-{other}\"]').click();document.querySelector('[data-next]').click();document.querySelector('[data-next]').click()")
+                check("switching candidate separates field notes " + candidate, "document.querySelector('#field-note').value==='' && !document.querySelector('[data-check=\"0\"]').checked")
+                js(f"document.querySelector('[data-back]').click();document.querySelector('[data-reselect]').click();document.querySelector('[data-pick=\"gaon-{candidate}\"]').click();document.querySelector('[data-next]').click();document.querySelector('[data-next]').click()")
+                check("returning to candidate keeps field notes " + candidate, "document.querySelector('#field-note').value==='소개에서 고른 후보의 현장 확인' && document.querySelector('[data-check=\"0\"]').checked")
+            navigate(file_base + '/index.html', '#hero-continue')
+            js("document.querySelector('[data-choice=\"snack\"]').click()")
+            follow('.hero [data-demo-entry]', '.chosen-summary')
+            check("primary CTA continues chosen candidate", "document.querySelector('.chosen-label strong').textContent==='스넥'")
+            viewport(1440)
+            js("document.querySelector('.workspace').scrollIntoView({block:'start',behavior:'instant'})")
+            shot(output / 'continued-snack-desktop.png')
+            navigate(file_base + '/demo/index.html?candidate=gaon-course', '.choice')
+            check("unsupported candidate keeps choice step", "document.querySelector('[data-step=\"0\"]').getAttribute('aria-current')==='step' && !document.querySelector('[data-pick][aria-pressed=\"true\"]')")
+            navigate(file_base + '/demo/index.html?case=age&candidate=gaon-snack', '.case-tab')
+            check("explicit case takes precedence", "document.querySelector('[data-case=\"age\"]').getAttribute('aria-pressed')==='true' && !document.querySelector('.chosen-summary')")
+            navigate(file_base + '/demo/index.html?case=toString&candidate=%3Cscript%3E', '.choice')
+            check("unknown URL values do not enter UI", "document.querySelectorAll('.choice').length===2 && !document.querySelector('#story script') && !document.querySelector('#story').textContent.includes('<script>')")
             alone=output/'standalone';alone.mkdir(exist_ok=True)
             shutil.copyfile(ROOT/'site/demo/index.html',alone/'demo.html')
             call('Network.setBlockedURLs',{'urls':['http://*','https://*']})

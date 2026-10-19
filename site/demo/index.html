@@ -12,6 +12,10 @@
 
 .explorer-toolbar{margin-top:20px;max-width:540px}.explorer-body{margin-top:16px}
 @media(max-width:680px){.start-example [role=status]{order:-1}.explorer-toolbar{max-width:none}}
+
+.chosen-summary{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:18px 20px;margin-bottom:24px;background:var(--warm);border:1px solid var(--border);border-radius:12px}
+.chosen-summary p{font-size:13px;color:var(--muted);margin-top:8px}.chosen-summary .chosen-label{color:var(--text);margin:0 0 9px;font-size:14px}.chosen-summary .button{flex-shrink:0}
+@media(max-width:680px){.chosen-summary{align-items:start;flex-direction:column;gap:14px;padding:16px}.chosen-summary .button{min-height:42px;font-size:12px}}
 </style></head>
 <body><a class="skip" href="#main">본문으로 이동</a><div class="wrap">
 <header class="mast"><a class="brand" href="https://soccz.github.io/">soccz<i>.</i><small>ANCHOR BRIDGE</small></a><nav class="nav" aria-label="관련 자료"><a href="https://soccz.github.io/projects/anchor-bridge/">프로젝트</a><a href="https://github.com/soccz/anchor-bridge">GitHub ↗</a></nav></header>
@@ -57,10 +61,17 @@ function monthlyChart() {
   const points = values => values.map((v,i) => `${30+i*58},${105-(v-.88)*320}`).join(' ');
   return `<svg class="mini-chart" viewBox="0 0 350 140" role="img" aria-label="합성 6개월 계열: 제과점과 스넥은 반대 방향, 일반한식은 대체로 같은 방향"><line x1="25" y1="105" x2="325" y2="105" stroke="#ddd3c8"/>${[['anchor','#948676'],['meal','#426d52'],['snack','#c4724e']].map(([key,color])=>`<polyline points="${points(m[key])}" fill="none" stroke="${color}" stroke-width="2.5" ${key==='anchor'?'stroke-dasharray="4 4"':''}/>`).join('')}${[1,2,3,4,5,6].map((n,i)=>`<text x="${30+i*58}" y="126" text-anchor="middle" font-size="10" fill="#706458">${n}월</text>`).join('')}</svg><div class="legend"><span style="--legend:#948676">제과점</span><span style="--legend:#426d52">일반한식</span><span style="--legend:#c4724e">스넥</span></div>`;
 }
+function chosenSummary() {
+  const r=currentRecord();
+  const explanation=r.id==='gaon-snack'
+    ? '고객구성은 더 닮았지만, 월별 지표가 반대로 움직인다는 시연 가정으로 제외합니다.'
+    : '제과점을 제외한 금액·건수 소비기반을 충족해 검토 후보로 남깁니다. 실행 승인은 별도입니다.';
+  return `<div class="chosen-summary" aria-label="선택한 후보와 판정"><div><p class="chosen-label">선택한 후보 · 제과점 → <strong>${esc(r.partner)}</strong></p>${badge(r)}<p>${explanation}</p></div><button class="button light" type="button" data-reselect>후보 다시 선택</button></div>`;
+}
 function evidenceView() {
   if (state.case === 'base') {
     const d=study.denominator, local=state.basis?d.local_total-d.local_anchor:d.local_total, ref=state.basis?d.reference_total-d.reference_anchor:d.reference_total;
-    return header('가온시 · 두 후보 비교','비슷한 고객만으로 고르지 않습니다.','큰 업종에 가려진 소비기반과 월별 움직임을 구분해서 봅니다.') + `<div class="evidence-grid"><article class="evidence"><h3>① 제과점을 빼면 보이는 식사 소비</h3><div class="toggle" aria-label="소비기반의 분모"><button data-basis="0" aria-pressed="${!state.basis}">전체 소비 기준</button><button data-basis="1" aria-pressed="${state.basis}">제과점 제외</button></div><div id="denominator-proof" aria-live="polite">${bar('가온시 · 일반한식 비중',d.local_partner/local)}${bar('비교 모집단 · 일반한식 비중',d.reference_partner/ref,true)}<div class="ratio"><strong>${num(state.basis?d.clq:d.lq)}</strong><span>${state.basis?'앵커 제외 CLQ':'보정 전 LQ'}<br>${state.basis?'기준 1 이상 · 소비기반 확인':'기준 1 미만 · 약해 보임'}</span></div><p class="small">지역: 220 ÷ ${local.toLocaleString()}<br>비교: 2,500 ÷ ${ref.toLocaleString()}</p></div><p class="caption">지역과 비교 모집단에서 제과점을 모두 제외합니다. 매출이 늘어난 것이 아니라 비교의 분모가 바뀐 것입니다.</p></article><article class="evidence"><h3>② 높은 유사도가 통과를 보장하지 않음</h3><table class="compare-table"><thead><tr><th>판단 근거</th><th>스넥</th><th>일반한식</th></tr></thead><tbody><tr><td>고객구성 유사도</td><td>0.91</td><td>0.82</td></tr><tr><td>금액 / 건수 CLQ</td><td>1.88 / 1.40</td><td>1.32 / 1.18</td></tr><tr><td>월별 방향</td><td>반대 방향</td><td>같은 방향</td></tr><tr><td>시연 판정</td><td><span class="pill stop">탐색적 제외</span></td><td><span class="pill good">검토 후보</span></td></tr></tbody></table>${monthlyChart()}<p class="caption">유사도는 설정값, 선은 직접 작성한 월별 지표(임의 단위)입니다. 역행 제외는 시연 가정이며 유의성 검정을 통과했다는 뜻이 아닙니다.</p></article></div><div class="callout">이 비교로 알 수 있는 것은 <b>어느 후보를 더 검토할지</b>입니다. 같은 사람이 두 업종을 이용하는지, 할인이 소비를 늘리는지는 후속 실험에서 확인합니다.</div>`;
+    return header('가온시 · 두 후보 비교','비슷한 고객만으로 고르지 않습니다.','큰 업종에 가려진 소비기반과 월별 움직임을 구분해서 봅니다.') + chosenSummary() + `<div class="evidence-grid"><article class="evidence"><h3>① 제과점을 빼면 보이는 식사 소비</h3><div class="toggle" aria-label="소비기반의 분모"><button data-basis="0" aria-pressed="${!state.basis}">전체 소비 기준</button><button data-basis="1" aria-pressed="${state.basis}">제과점 제외</button></div><div id="denominator-proof" aria-live="polite">${bar('가온시 · 일반한식 비중',d.local_partner/local)}${bar('비교 모집단 · 일반한식 비중',d.reference_partner/ref,true)}<div class="ratio"><strong>${num(state.basis?d.clq:d.lq)}</strong><span>${state.basis?'앵커 제외 CLQ':'보정 전 LQ'}<br>${state.basis?'기준 1 이상 · 소비기반 확인':'기준 1 미만 · 약해 보임'}</span></div><p class="small">지역: 220 ÷ ${local.toLocaleString()}<br>비교: 2,500 ÷ ${ref.toLocaleString()}</p></div><p class="caption">지역과 비교 모집단에서 제과점을 모두 제외합니다. 매출이 늘어난 것이 아니라 비교의 분모가 바뀐 것입니다.</p></article><article class="evidence"><h3>② 높은 유사도가 통과를 보장하지 않음</h3><table class="compare-table"><thead><tr><th>판단 근거</th><th>스넥</th><th>일반한식</th></tr></thead><tbody><tr><td>고객구성 유사도</td><td>0.91</td><td>0.82</td></tr><tr><td>금액 / 건수 CLQ</td><td>1.88 / 1.40</td><td>1.32 / 1.18</td></tr><tr><td>월별 방향</td><td>반대 방향</td><td>같은 방향</td></tr><tr><td>시연 판정</td><td><span class="pill stop">탐색적 제외</span></td><td><span class="pill good">검토 후보</span></td></tr></tbody></table>${monthlyChart()}<p class="caption">유사도는 설정값, 선은 직접 작성한 월별 지표(임의 단위)입니다. 역행 제외는 시연 가정이며 유의성 검정을 통과했다는 뜻이 아닙니다.</p></article></div><div class="callout">이 비교로 알 수 있는 것은 <b>어느 후보를 더 검토할지</b>입니다. 같은 사람이 두 업종을 이용하는지, 할인이 소비를 늘리는지는 후속 실험에서 확인합니다.</div>`;
   }
   if (state.case === 'life') { const l=study.life,a=state.common?l.after_a:l.before_a,b=state.common?l.after_b:l.before_b; return header('누리군 · 생활재 예외','연령구성을 맞춰도 차이가 남을까요?','집단마다 연령구성이 다르면 단순 비중 비교가 과장될 수 있습니다. 같은 가중치로 다시 비교합니다.') + `<div class="evidence-grid"><article class="evidence"><h3>① 같은 연령구성으로 비교</h3><div class="toggle" aria-label="연령 재가중"><button data-common="0" aria-pressed="${!state.common}">원래 구성</button><button data-common="1" aria-pressed="${state.common}">같은 연령구성</button></div><div id="composition-proof" aria-live="polite">${bar('집단 A · 생활재 비중',a)}${bar('집단 B · 생활재 비중',b,true)}<div class="ratio"><strong>${pct(a-b)}<small style="font-size:18px">%p</small></strong><span>두 집단의 비중 차이<br>${state.common?'구성 차이를 줄여도 남음':'연령구성의 영향이 섞여 있음'}</span></div></div><p class="caption">두 연령층의 공통 가중치 60%·40%. 집단 A: 20%×60% + 60%×40% = 36%. 집단 B는 18%입니다.</p></article><article class="evidence"><h3>② 예외 뒤에도 같은 후보 조건</h3><table class="compare-table"><thead><tr><th>파트너</th><th>금액 / 건수 CLQ</th><th>판정</th></tr></thead><tbody><tr><td>중국음식</td><td>1.26 / 1.14</td><td><span class="pill good">검토 후보</span></td></tr><tr><td>일반한식</td><td>1.08 / 0.92</td><td><span class="pill stop">제외</span></td></tr></tbody></table><div class="rule-strip"><div><b>관측</b>3개월 이상</div><div><b>소비기반</b>금액·건수 ≥ 1</div><div><b>공급</b>업종별 점포 확인</div><div><b>거리</b>직선거리 조건</div></div><p class="caption">공개 시연의 축약 기준입니다. 생활재 예외는 앵커의 범위만 넓히며 후속 조건을 면제하지 않습니다.</p></article></div><div class="callout">생활재 소비의 차이는 지역과 업종을 검토할 근거입니다. 개인의 국적·직업을 추정하거나 소비 증가 효과를 입증하는 지표는 아닙니다.</div>`; }
   return header('다온시 · 연령 조건','후보가 살아나도, 점포는 새로 확인합니다.','연령 조건은 별도 실험의 근거입니다. 기본 원장과 파트너가 다르면 공급·거리도 별도로 계산해야 합니다.') + `<div class="evidence-grid"><article class="evidence"><h3>① 제과점의 자격 변화</h3><table class="compare-table"><thead><tr><th>기준</th><th>금액 CLQ</th><th>건수 CLQ</th></tr></thead><tbody><tr><td>전 연령</td><td>0.80</td><td>0.82</td></tr><tr><td>특정 연령</td><td>1.20</td><td>1.10</td></tr></tbody></table><div class="ratio"><strong>별도 실험</strong><span>기본 후보를<br>덮어쓰지 않음</span></div><p>연령 조건에서 금액·건수 자격을 충족한 상황을 가정합니다. 관측대상이 달라진 효과와 연령 효과는 실제 분석에서 분리해야 합니다.</p></article><article class="evidence"><h3>② 다른 파트너의 조건을 복사하지 않음</h3><table class="compare-table"><thead><tr><th>확인 항목</th><th>중국음식<br><small>기본 후보</small></th><th>제과점<br><small>연령 후보</small></th></tr></thead><tbody><tr><td>파트너 점포</td><td>10곳</td><td><b>미확인</b></td></tr><tr><td>거리조건 충족</td><td>60%</td><td><b>미확인</b></td></tr><tr><td>현재 판단</td><td>검토 후보</td><td><span class="pill hold">추가 확인</span></td></tr></tbody></table><p style="margin-top:22px">제과점의 공급·보행 경로부터 확인한 뒤, 연령 기준으로 고른 연결이 더 나은지 별도 실험을 설계합니다.</p></article></div><div class="callout"><b>미확인은 0도, 통과도 아닙니다.</b> 자격이 달라진 이유와 아직 모르는 조건을 함께 검토서에 남깁니다.</div>`;
@@ -84,6 +95,7 @@ function renderStory(focus=false) {
   for(const [attr,key] of [['basis','basis'],['life','life'],['age','age'],['common','common']]) document.querySelectorAll(`[data-${attr}]`).forEach(b=>b.onclick=()=>{state[key]=b.dataset[attr]==='1';renderStory();document.querySelector(`[data-${attr}="${+state[key]}"]`).focus({preventScroll:true});revealFeedback();});
   document.querySelectorAll('[data-next]').forEach(b=>b.onclick=()=>{state.step++;renderStory(true);});
   $('[data-back]')?.addEventListener('click',()=>{state.step=1;renderStory(true);});
+  $('[data-reselect]')?.addEventListener('click',()=>{state.step=0;renderStory(true);});
   $('[data-next-case]')?.addEventListener('click',()=>changeCase(state.case==='base'?'life':state.case==='life'?'age':'base',true));
   $('#story-review')?.addEventListener('click',e=>openReview(currentRecord().id,e.currentTarget));
   document.querySelectorAll('[data-check]').forEach(b=>b.onchange=()=>{recordNotes(currentRecord().id).checked[+b.dataset.check]=b.checked;});
@@ -111,6 +123,16 @@ document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{state.step=+b
 $('#search').oninput=renderExplorer;$('#status').onchange=renderExplorer;$('#reset').onclick=()=>{$('#search').value='';$('#status').value='';renderExplorer();};
 $('#close-review').onclick=()=>{$('#review').close();opener?.focus();};$('#review').addEventListener('close',()=>{document.body.classList.remove('print-review');opener?.focus();});
 $('#print-review').onclick=()=>{document.body.classList.add('print-review');window.print();};window.addEventListener('beforeprint',()=>{if($('#review').open)document.body.classList.add('print-review');});window.addEventListener('afterprint',()=>document.body.classList.remove('print-review'));
-const requested=new URLSearchParams(location.search).get('case');
-changeCase(({base:'base',life:'life',age:'age','가온시':'base','누리군':'life','다온시':'age'})[requested]||'base');renderExplorer();
+const params=new URLSearchParams(location.search);
+const cases=new Map([['base','base'],['life','life'],['age','age'],['가온시','base'],['누리군','life'],['다온시','age']]);
+state.case=cases.get(params.get('case'))||'base';
+const candidate=params.get('candidate');
+const continueChoice=state.case==='base' && ['gaon-snack','gaon-meal'].includes(candidate);
+if(continueChoice) {
+  state.chosen=candidate;
+  state.step=1;
+  selected=candidate;
+}
+renderStory(continueChoice);
+renderExplorer();
 </script></body></html>

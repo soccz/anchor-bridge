@@ -11,3 +11,7 @@
 
 .explorer-toolbar{margin-top:20px;max-width:540px}.explorer-body{margin-top:16px}
 @media(max-width:680px){.start-example [role=status]{order:-1}.explorer-toolbar{max-width:none}}
+
+.chosen-summary{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:18px 20px;margin-bottom:24px;background:var(--warm);border:1px solid var(--border);border-radius:12px}
+.chosen-summary p{font-size:13px;color:var(--muted);margin-top:8px}.chosen-summary .chosen-label{color:var(--text);margin:0 0 9px;font-size:14px}.chosen-summary .button{flex-shrink:0}
+@media(max-width:680px){.chosen-summary{align-items:start;flex-direction:column;gap:14px;padding:16px}.chosen-summary .button{min-height:42px;font-size:12px}}
